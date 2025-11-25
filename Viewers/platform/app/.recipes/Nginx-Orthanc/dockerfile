@@ -35,7 +35,11 @@ RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/stateManageme
 
 RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/utilities/segmentation/getSegmentLargestBidirectional.js
 
+RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/RenderingEngine/StackViewport.js
+RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/utilities/updateVTKImageDataWithCornerstoneImage.js
+
 RUN rm -rf /usr/src/app/node_modules/dcmjs/build/dcmjs.es.js
+
 
 # To change color of negative prompts
 COPY ./backup/esm/AnnotationTool.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/tools/base/
@@ -53,6 +57,9 @@ COPY ./backup/esm/SegmentationRenderingEngine.js /usr/src/app/node_modules/@corn
 COPY ./backup/esm/clearSegmentValue.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/stateManagement/segmentation/helpers/
 
 COPY ./backup/esm/getSegmentLargestBidirectional.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/utilities/segmentation/getSegmentLargestBidirectional.js
+
+COPY ./backup/esm/StackViewport.js /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/RenderingEngine/StackViewport.js
+COPY ./backup/esm/updateVTKImageDataWithCornerstoneImage.js /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/utilities/updateVTKImageDataWithCornerstoneImage.js
 
 COPY ./backup/dcmjs/dcmjs.es.js /usr/src/app/node_modules/dcmjs/build/dcmjs.es.js
 
