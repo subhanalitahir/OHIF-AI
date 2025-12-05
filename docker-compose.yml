@@ -73,3 +73,64 @@ services:
       - ohif_viewer
       - orthanc
     restart: on-failure
+
+  viewer_0512:
+    build:
+      # Project root
+      context: ./Viewers-0512/
+      # Relative to context
+      dockerfile: ./platform/app/.recipes/Nginx-Orthanc/dockerfile
+    image: webapp-0512:latest
+    container_name: ohif_orthanc_0512
+    volumes:
+      # Nginx config
+      - ./Viewers-0512/platform/app/.recipes/Nginx-Orthanc/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./Viewers-0512/platform/app/.recipes/Nginx-Orthanc/config/.htpasswd:/etc/nginx/.htpasswd
+      # Logs
+      - ./Viewers-0512/platform/app/.recipes/Nginx-Orthanc/logs/nginx:/var/logs/nginx
+    # Direct access on port 1027 AND subdirectory access via proxy
+    ports:
+      - '1027:1026' # Web (mapped to internal port 1026) - for direct access
+      - '1028:1025' # SSL (mapped to internal port 1025)
+    expose:
+      - "1026"  # Also expose for internal proxy access at /viewer-0512/
+      - "1025"
+    depends_on:
+      #   - keycloak
+      - orthanc
+    restart: on-failure
+
+  monai_label_0512:
+    build:
+      # Build context is MONAILabel-0512 directory (like monai_sam2 uses ./monai-label/)
+      context: ./MONAILabel-0512/
+      # Dockerfile is in the context root
+      dockerfile: Dockerfile
+    image: monai-0512:latest
+    runtime: nvidia
+    container_name: monai_label_0512
+    volumes:
+      # Persist data
+      - ./MONAILabel-0512/predictions:/code/predictions
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all  # This exposes all GPUs to the container
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    #  - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # Required driver capabilities for GPU use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+            #  device_ids: ['7:1']
+              capabilities: [gpu]  # Request GPUs for this service
+    shm_size: '10gb' #runtime: nvidia  # Use NVIDIA runtime
+    # External port for direct access AND internal expose for proxy access
+    ports:
+      - '8005:8005'  # Direct access
+    expose:
+      - "8005"  # Also expose for internal proxy access at /monailabel-0512/
+    depends_on:
+      - orthanc
+    restart: on-failure
+    
