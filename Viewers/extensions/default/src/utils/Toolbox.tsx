@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Icons, PanelSection, ToolSettings, Switch, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@ohif/ui-next';
+import React, { useState, useEffect, useRef } from 'react';
+import { Icons, PanelSection, ToolSettings, Switch, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Button } from '@ohif/ui-next';
 import { Lock, LockOpen } from 'lucide-react';
 import { useSystem, useToolbar } from '@ohif/core';
 import classnames from 'classnames';
@@ -36,6 +36,79 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
   const [posNeg, setPosNeg] = useState(toolboxState.getPosNeg());
   const [refineNew, setRefineNew] = useState(toolboxState.getRefineNew());
   const [selectedModel, setSelectedModel] = useState<'nnInteractive' | 'sam2' | 'medsam2'>(toolboxState.getSelectedModel());
+  
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+
+  // Timer functions
+  const startTimer = () => {
+    // If timer was finished (not running but has elapsed time), reset it
+    if (!timerRunning && elapsedTime > 0) {
+      setElapsedTime(0);
+      startTimeRef.current = null;
+    }
+    
+    if (timerRunning) {
+      return; // Already running
+    }
+    
+    const now = Date.now();
+    startTimeRef.current = now;
+    setTimerRunning(true);
+    
+    // Clear any existing interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    
+    // Update timer every 100ms for smooth display
+    timerIntervalRef.current = setInterval(() => {
+      if (startTimeRef.current) {
+        const elapsed = Date.now() - startTimeRef.current;
+        setElapsedTime(elapsed);
+      }
+    }, 100);
+  };
+
+  const finishTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerRunning(false);
+    // Keep the elapsed time displayed until next start
+  };
+
+  const cancelTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerRunning(false);
+    setElapsedTime(0);
+    startTimeRef.current = null;
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Format time display (MM:SS.mmm)
+  const formatTime = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = Math.floor((ms % 1000) / 100);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds}`;
+  };
 
   // Sync local state with global state changes
   useEffect(() => {
@@ -278,10 +351,14 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
           "pointer-events-none": shouldCollapse 
         })}>
           <span className="pointer-events-auto">{t(title)}</span>
+        </span>
+        <div className="flex items-center gap-2 ml-auto">
           {isAIToolBox && (
             <button
               type="button"
-              className={classnames('ml-auto h-5 w-5 text-primary hover:opacity-80 pointer-events-auto cursor-pointer')}
+              className={classnames('h-5 w-5 hover:opacity-80 pointer-events-auto cursor-pointer', {
+                "pointer-events-none": shouldCollapse 
+              })}
               onClick={e => {
                 e.stopPropagation();
                 const next = !isLocked;
@@ -294,12 +371,14 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
               aria-label={isLocked ? 'Unlock tools' : 'Lock tools'}
               title={isLocked ? 'Unlock tools' : 'Lock tools'}
             >
-              {isLocked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+              {isLocked ? (
+                <Lock className="h-4 w-4 text-red-500" strokeWidth={3} />
+              ) : (
+                <LockOpen className="h-4 w-4 text-green-500" strokeWidth={3} />
+              )}
             </button>
           )}
-        </span>
-        {CustomConfigComponent && (
-          <div className="ml-auto mr-2">
+          {CustomConfigComponent && (
             <Icons.Settings
               className="text-primary h-4 w-4"
               onClick={e => {
@@ -307,8 +386,8 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                 setShowConfig(!showConfig);
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
       </PanelSection.Header>
 
       {!shouldCollapse && (
@@ -321,7 +400,8 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
           return (
             <React.Fragment key={sectionId}>
               {isAIToolBox && (
-                <div className="flex justify-center items-center gap-4 py-2 px-1">
+                <>
+                 <div className="flex justify-center items-center gap-4 py-2 px-1">
                    <div className="flex items-center gap-2">
                      <Label htmlFor="live-mode">Live Mode</Label>
                      <Switch
@@ -380,6 +460,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                      </Select>
                    </div>
                  </div>
+                </>
                 )}
               <div
                 className="bg-muted flex flex-wrap space-x-2 py-2 px-1"
@@ -406,6 +487,46 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                 );
               })}
             </div>
+            {isAIToolBox && (
+              <>
+                {/* Timer Component - placed below tool icons */}
+                <div className="flex flex-col items-center gap-2 py-2 px-1 border-t border-primary/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Label className="text-sm font-semibold">Timer</Label>
+                  <div className="text-lg font-mono font-bold text-primary min-w-[100px] text-center">
+                    {formatTime(elapsedTime)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={startTimer}
+                    disabled={timerRunning}
+                  >
+                    Start
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={finishTimer}
+                    disabled={!timerRunning}
+                  >
+                    Finish
+                  </Button>
+                  {timerRunning && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelTimer}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+              </>
+            )}
             </React.Fragment>
           );
         })}
