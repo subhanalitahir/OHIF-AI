@@ -35,7 +35,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
   const [liveMode, setLiveMode] = useState(toolboxState.getLiveMode());
   const [posNeg, setPosNeg] = useState(toolboxState.getPosNeg());
   const [refineNew, setRefineNew] = useState(toolboxState.getRefineNew());
-  const [selectedModel, setSelectedModel] = useState<'nnInteractive' | 'sam2' | 'medsam2'>(toolboxState.getSelectedModel());
+  const [selectedModel, setSelectedModel] = useState<'nnInteractive' | 'sam2' | 'medsam2' | 'sam3'>(toolboxState.getSelectedModel());
   
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
@@ -248,7 +248,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
     }
   }, [isLocked]);
 
-  // Keyboard hotkey handler for model selection toggle (cycles through: nnInteractive -> sam2 -> medsam2 -> nnInteractive)
+  // Keyboard hotkey handler for model selection toggle (cycles through: nnInteractive -> sam2 -> medsam2 -> sam3 -> nnInteractive)
   useEffect(() => {
     if (hotkeysDisabled) {
       return;
@@ -265,9 +265,11 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
         
         if (!isInputField) {
           event.preventDefault();
-          // Cycle through models: nnInteractive -> sam2 -> medsam2 -> nnInteractive
+          // Cycle through models: nnInteractive -> sam2 -> medsam2 -> sam3 -> nnInteractive
           const nextModel = selectedModel === 'nnInteractive' ? 'sam2' : 
-                           selectedModel === 'sam2' ? 'medsam2' : 'nnInteractive';
+                           selectedModel === 'sam2' ? 'medsam2' :
+                           selectedModel === 'medsam2' ? 'sam3' :
+                           'nnInteractive';
           setSelectedModel(nextModel);
           toolboxState.setSelectedModel(nextModel);
           console.log('Model selection toggled via hotkey (t):', nextModel);
@@ -443,7 +445,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                      <Select
                        value={selectedModel}
                        onValueChange={(value) => {
-                         const model = value as 'nnInteractive' | 'sam2' | 'medsam2';
+                         const model = value as 'nnInteractive' | 'sam2' | 'medsam2' | 'sam3';
                          setSelectedModel(model);
                          toolboxState.setSelectedModel(model);
                          console.log('Model selection:', model);
@@ -456,6 +458,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                          <SelectItem value="nnInteractive">nnInteractive</SelectItem>
                          <SelectItem value="sam2">SAM2</SelectItem>
                          <SelectItem value="medsam2">MedSAM2</SelectItem>
+                         <SelectItem value="sam3">SAM3</SelectItem>
                        </SelectContent>
                      </Select>
                    </div>
