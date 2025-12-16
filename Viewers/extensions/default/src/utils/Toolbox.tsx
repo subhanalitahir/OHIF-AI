@@ -73,13 +73,65 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
     }, 100);
   };
 
-  const finishTimer = () => {
+  const finishTimer = async () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
     setTimerRunning(false);
     // Keep the elapsed time displayed until next start
+
+    // Get active viewport and segmentation
+    try {
+      const { viewportGridService, segmentationService } = servicesManager.services;
+      const viewportId = viewportGridService.getActiveViewportId();
+      
+      if (!viewportId) {
+        console.warn('No active viewport found');
+        return;
+      }
+
+      const activeSegmentation = segmentationService.getActiveSegmentation(viewportId);
+      
+      if (!activeSegmentation) {
+        console.warn('No active segmentation found');
+        return;
+      }
+
+      const segmentationId = activeSegmentation.segmentationId;
+      
+      // Save elapsed time in segmentation cachedStats
+      const segmentation = segmentationService.getSegmentation(segmentationId);
+      if (segmentation) {
+        const updatedSegmentation = { ...segmentation };
+        if (!updatedSegmentation.cachedStats) {
+          updatedSegmentation.cachedStats = {};
+        }
+        updatedSegmentation.cachedStats.elapsedTime = elapsedTime;
+        updatedSegmentation.cachedStats.elapsedTimeFormatted = formatTime(elapsedTime);
+        
+        // Update segmentation with time data
+        segmentationService.addOrUpdateSegmentation({
+          segmentationId,
+          cachedStats: updatedSegmentation.cachedStats,
+        });
+      }
+
+      // Call storeSegmentation
+      try {
+        await commandsManager.run({
+          commandName: 'storeSegmentation',
+          commandOptions: {
+            segmentationId,
+          },
+          context: 'CORNERSTONE',
+        });
+      } catch (error) {
+        console.error('storeSegmentation failed:', error);
+      }
+    } catch (error) {
+      console.error('Error in finishTimer:', error);
+    }
   };
 
   const cancelTimer = () => {
@@ -338,6 +390,12 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
       commandsManager?.run?.('setToolActive', { toolName: 'Pan' });
       return;
     }
+    // Prevent tool changes when timer is not running (start button not clicked)
+    if (isAIToolBox && !timerRunning && itemId !== 'Pan') {
+      // Prevent tool changes when timer is not running; keep Pan active
+      commandsManager?.run?.('setToolActive', { toolName: 'Pan' });
+      return;
+    }
     onInteraction?.({ itemId });
   };
 
@@ -474,10 +532,15 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                 }
                 const { id, Component, componentProps } = tool;
 
+                // Disable AI Tools buttons when timer is not running (start button not clicked)
+                const isDisabled = isAIToolBox && !timerRunning && id !== 'Pan';
+
                 return (
                   <div
                     key={id}
-                    className={classnames('ml-1')}
+                    className={classnames('ml-1', {
+                      'opacity-50 pointer-events-none': isDisabled,
+                    })}
                   >
                     <Component
                       {...componentProps}
@@ -485,6 +548,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                       onInteraction={handleInteraction}
                       size="toolbox"
                       servicesManager={servicesManager}
+                      disabled={isDisabled}
                     />
                   </div>
                 );

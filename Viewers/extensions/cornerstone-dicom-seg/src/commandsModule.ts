@@ -278,6 +278,19 @@ const commandsModule = ({
           }
 
           const { dataset: naturalizedReport } = generatedData;
+          
+          // Save elapsedTime in ContentDescription tag (0070, 0081) if available
+          if (segmentation.cachedStats?.elapsedTimeFormatted) {
+            naturalizedReport.ContentDescription = segmentation.cachedStats.elapsedTimeFormatted;
+          } else if (segmentation.cachedStats?.elapsedTime) {
+            // Fallback: format from raw milliseconds if formatted version not available
+            const totalSeconds = Math.floor(segmentation.cachedStats.elapsedTime / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = Math.floor((segmentation.cachedStats.elapsedTime % 1000) / 100);
+            naturalizedReport.ContentDescription = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds}`;
+          }
+          
           let selectedDataSourceConfig_new = undefined;
           if (selectedDataSourceConfig.store == undefined) {
             selectedDataSourceConfig_new = selectedDataSourceConfig[0];
