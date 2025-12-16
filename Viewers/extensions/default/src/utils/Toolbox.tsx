@@ -579,7 +579,7 @@ export function Toolbox({ buttonSectionId, title }: { buttonSectionId: string; t
                     onClick={finishTimer}
                     disabled={!timerRunning}
                   >
-                    Finish
+                    Finish & Save
                   </Button>
                   {timerRunning && (
                     <Button
