@@ -42,6 +42,8 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
   const [medgemmaResult, setMedgemmaResult] = useState(toolboxState.getMedgemmaResult());
   const [medgemmaInstruction, setMedgemmaInstruction] = useState(toolboxState.getMedgemmaInstruction());
   const [medgemmaQuery, setMedgemmaQuery] = useState(toolboxState.getMedgemmaQuery());
+  const [medgemmaStartSlice, setMedgemmaStartSlice] = useState<number | null>(toolboxState.getMedgemmaStartSlice());
+  const [medgemmaEndSlice, setMedgemmaEndSlice] = useState<number | null>(toolboxState.getMedgemmaEndSlice());
   
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
@@ -166,9 +168,13 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
         const result = toolboxState.getMedgemmaResult();
         const instruction = toolboxState.getMedgemmaInstruction();
         const query = toolboxState.getMedgemmaQuery();
+        const startSlice = toolboxState.getMedgemmaStartSlice();
+        const endSlice = toolboxState.getMedgemmaEndSlice();
         setMedgemmaResult(result);
         setMedgemmaInstruction(instruction);
         setMedgemmaQuery(query);
+        setMedgemmaStartSlice(startSlice);
+        setMedgemmaEndSlice(endSlice);
       }, 100); // Check every 100ms for updates
       return () => clearInterval(interval);
     }
@@ -667,11 +673,53 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
                     className="min-h-[60px] text-sm bg-primary-dark border border-primary-main rounded p-2 text-white placeholder:text-primary-light resize-y"
                   />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <Label className="text-sm font-semibold">Slice Range (Optional)</Label>
+                  <div className="flex gap-2">
+                    <div className="flex flex-col gap-1 flex-1">
+                      <Label htmlFor="medgemma-start-slice" className="text-xs text-primary-light">Start Slice (min: 1)</Label>
+                      <input
+                        id="medgemma-start-slice"
+                        type="number"
+                        min="1"
+                        value={medgemmaStartSlice ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                          setMedgemmaStartSlice(value);
+                          toolboxState.setMedgemmaStartSlice(value);
+                        }}
+                        placeholder="1"
+                        className="text-sm bg-primary-dark border border-primary-main rounded p-2 text-white placeholder:text-primary-light"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <Label htmlFor="medgemma-end-slice" className="text-xs text-primary-light">End Slice (max: total slices)</Label>
+                      <input
+                        id="medgemma-end-slice"
+                        type="number"
+                        min="1"
+                        value={medgemmaEndSlice ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                          setMedgemmaEndSlice(value);
+                          toolboxState.setMedgemmaEndSlice(value);
+                        }}
+                        placeholder="Total slices"
+                        className="text-sm bg-primary-dark border border-primary-main rounded p-2 text-white placeholder:text-primary-light"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <Button
                   variant="default"
                   size="sm"
                   onClick={() => {
-                    commandsManager?.run('testMedgemma', { instruction: medgemmaInstruction, query: medgemmaQuery });
+                    commandsManager?.run('testMedgemma', { 
+                      instruction: medgemmaInstruction, 
+                      query: medgemmaQuery,
+                      startSlice: medgemmaStartSlice,
+                      endSlice: medgemmaEndSlice
+                    });
                   }}
                   disabled={!medgemmaQuery || medgemmaQuery.trim() === ''}
                   className="w-full"
