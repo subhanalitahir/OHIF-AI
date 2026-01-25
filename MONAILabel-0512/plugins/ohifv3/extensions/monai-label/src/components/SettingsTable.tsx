@@ -26,7 +26,7 @@ export default class SettingsTable extends Component {
 
     const url = CookieUtils.getCookieString(
       'MONAILABEL_SERVER_URL',
-      'http://' + window.location.host.split(':')[0] + ':8000/'
+      'https://' + window.location.host.split(':')[0] + '/monailabel-0512-api/'
     );
     const overlap_segments = CookieUtils.getCookieBool(
       'MONAILABEL_OVERLAP_SEGMENTS',
