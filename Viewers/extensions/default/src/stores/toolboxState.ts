@@ -12,6 +12,9 @@ let medgemmaInstruction: string = '';
 let medgemmaQuery: string = '';
 let medgemmaStartSlice: number | null = null;
 let medgemmaEndSlice: number | null = null;
+let accumulatedInferenceTime: number = 0; // Accumulated inference time in milliseconds
+let currentInferenceStart: number | null = null; // Start time of current inference
+let isTrackingInference: boolean = false; // Flag to indicate if inference tracking is active
 
 export const toolboxState = {
   getLiveMode: () => liveMode,
@@ -79,5 +82,32 @@ export const toolboxState = {
   getMedgemmaEndSlice: () => medgemmaEndSlice,
   setMedgemmaEndSlice: (endSlice: number | null) => {
     medgemmaEndSlice = endSlice;
+  },
+  getAccumulatedInferenceTime: () => accumulatedInferenceTime,
+  setAccumulatedInferenceTime: (time: number) => {
+    accumulatedInferenceTime = time;
+  },
+  resetInferenceTime: () => {
+    accumulatedInferenceTime = 0;
+    currentInferenceStart = null;
+  },
+  setIsTrackingInference: (tracking: boolean) => {
+    isTrackingInference = tracking;
+  },
+  getIsTrackingInference: () => isTrackingInference,
+  startInferenceTracking: () => {
+    if (isTrackingInference && currentInferenceStart === null) {
+      currentInferenceStart = Date.now();
+    }
+  },
+  endInferenceTracking: () => {
+    if (currentInferenceStart !== null && isTrackingInference) {
+      const inferenceDuration = Date.now() - currentInferenceStart;
+      accumulatedInferenceTime += inferenceDuration;
+      currentInferenceStart = null;
+      return inferenceDuration;
+    }
+    currentInferenceStart = null;
+    return 0;
   },
 }; 

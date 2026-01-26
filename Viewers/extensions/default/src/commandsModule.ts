@@ -781,6 +781,8 @@ const commandsModule = ({
       const selectedModel = toolboxState.getSelectedModel();
       const medsam2 = selectedModel //Check at monailabel server;
       const start = Date.now();
+      // Start tracking inference time if timer is running
+      toolboxState.startInferenceTracking();
       
       const segs = servicesManager.services.segmentationService.getSegmentations()
       const { activeViewportId, viewports } = viewportGridService.getState();
@@ -916,6 +918,8 @@ const commandsModule = ({
         document.dispatchEvent(event);
       }, 200);
       if (pos_points.length == 0 && neg_points.length == 0 && pos_boxes.length == 0 && text_prompts.length == 0){
+        // End tracking if returning early
+        toolboxState.endInferenceTracking();
         uiNotificationService.show({
           title: 'Prompt warning',
           message: 'Only pos/neg points and bbox are available for SAM2',
@@ -973,6 +977,8 @@ const commandsModule = ({
           const ct = response.headers["content-type"] as string;
 
           if (ct.includes('application/json') && new TextDecoder("utf-8").decode(response.data).includes("sam3_not_found.nii.gz")){
+            // End tracking if returning early
+            toolboxState.endInferenceTracking();
             uiNotificationService.show({
               title: 'SAM3 not found',
               message: 'SAM3 model not found, please check the checkpoint path',
@@ -1175,10 +1181,14 @@ const commandsModule = ({
             z_range,
           });
           const end = Date.now();
-          console.log(`Time taken: ${(end - start)/1000} Seconds`);
+          // End tracking inference time and accumulate if timer is running
+          const inferenceDuration = toolboxState.endInferenceTracking();
+          console.log(`Time taken: ${(end - start)/1000} Seconds${inferenceDuration > 0 ? ` (Inference: ${(inferenceDuration/1000).toFixed(2)}s tracked)` : ''}`);
           return response;
         }
       } catch (error) {
+        // End tracking even if inference fails
+        toolboxState.endInferenceTracking();
         console.error('Segmentation error:', error);
         throw error;
       }
@@ -1377,6 +1387,8 @@ const commandsModule = ({
 
       const overlap = false
       const start = Date.now();
+      // Start tracking inference time if timer is running
+      toolboxState.startInferenceTracking();
       
       const { activeViewportId, viewports } = viewportGridService.getState();
       const activeViewportSpecificData = viewports.get(activeViewportId);
@@ -1824,10 +1836,14 @@ const commandsModule = ({
           console.log(`After add and update segs: ${(Date.now() - start)/1000} Seconds`);
           
           const end = Date.now();
-          console.log(`Time taken: ${(end - start)/1000} Seconds`);
+          // End tracking inference time and accumulate if timer is running
+          const inferenceDuration = toolboxState.endInferenceTracking();
+          console.log(`Time taken: ${(end - start)/1000} Seconds${inferenceDuration > 0 ? ` (Inference: ${(inferenceDuration/1000).toFixed(2)}s tracked)` : ''}`);
           return response;
         }
       } catch (error) {
+        // End tracking even if inference fails
+        toolboxState.endInferenceTracking();
         console.error('Nninter segmentation error:', error);
         throw error;
       }

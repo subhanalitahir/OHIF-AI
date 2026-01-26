@@ -57,6 +57,8 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
     if (!timerRunning && elapsedTime > 0) {
       setElapsedTime(0);
       startTimeRef.current = null;
+      // Reset inference time when resetting timer
+      toolboxState.resetInferenceTime();
     }
     
     if (timerRunning) {
@@ -66,6 +68,10 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
     const now = Date.now();
     startTimeRef.current = now;
     setTimerRunning(true);
+    
+    // Reset inference time when starting timer and enable tracking
+    toolboxState.resetInferenceTime();
+    toolboxState.setIsTrackingInference(true);
     
     // Clear any existing interval
     if (timerIntervalRef.current) {
@@ -87,6 +93,8 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
       timerIntervalRef.current = null;
     }
     setTimerRunning(false);
+    // Disable inference tracking when timer stops
+    toolboxState.setIsTrackingInference(false);
     // Keep the elapsed time displayed until next start
 
     // Get active viewport and segmentation
@@ -108,7 +116,13 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
 
       const segmentationId = activeSegmentation.segmentationId;
       
-      // Save elapsed time in segmentation cachedStats
+      // Get accumulated inference time
+      const inferenceTime = toolboxState.getAccumulatedInferenceTime();
+      const userTime = elapsedTime - inferenceTime; // User time = total time - inference time
+      const inferencePercentage = elapsedTime > 0 ? (inferenceTime / elapsedTime) * 100 : 0;
+      const userPercentage = elapsedTime > 0 ? (userTime / elapsedTime) * 100 : 0;
+      
+      // Save elapsed time and inference time in segmentation cachedStats
       const segmentation = segmentationService.getSegmentation(segmentationId);
       if (segmentation) {
         const updatedSegmentation = { ...segmentation };
@@ -117,6 +131,12 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
         }
         updatedSegmentation.cachedStats.elapsedTime = elapsedTime;
         updatedSegmentation.cachedStats.elapsedTimeFormatted = formatTime(elapsedTime);
+        updatedSegmentation.cachedStats.inferenceTime = inferenceTime;
+        updatedSegmentation.cachedStats.inferenceTimeFormatted = formatTime(inferenceTime);
+        updatedSegmentation.cachedStats.userTime = userTime;
+        updatedSegmentation.cachedStats.userTimeFormatted = formatTime(userTime);
+        updatedSegmentation.cachedStats.inferencePercentage = inferencePercentage;
+        updatedSegmentation.cachedStats.userPercentage = userPercentage;
         
         // Update segmentation with time data
         segmentationService.addOrUpdateSegmentation({
@@ -124,6 +144,8 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
           cachedStats: updatedSegmentation.cachedStats,
         });
       }
+      
+      console.log(`Total Time: ${formatTime(elapsedTime)}, Inference Time: ${formatTime(inferenceTime)} (${inferencePercentage.toFixed(2)}%), User Time: ${formatTime(userTime)} (${userPercentage.toFixed(2)}%)`);
 
       // Call storeSegmentation
       try {
@@ -150,6 +172,9 @@ export function Toolbox({ buttonSectionId, title, defaultOpen = true }: { button
     setTimerRunning(false);
     setElapsedTime(0);
     startTimeRef.current = null;
+    // Reset inference time when canceling and disable tracking
+    toolboxState.resetInferenceTime();
+    toolboxState.setIsTrackingInference(false);
   };
 
   // Cleanup timer on unmount
