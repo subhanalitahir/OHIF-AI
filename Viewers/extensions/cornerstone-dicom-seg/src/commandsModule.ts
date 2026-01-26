@@ -5,6 +5,7 @@ import { segmentation as cornerstoneToolsSegmentation } from '@cornerstonejs/too
 import { adaptersRT, helpers, adaptersSEG } from '@cornerstonejs/adapters';
 import { createReportDialogPrompt } from '@ohif/extension-default';
 import { DicomMetadataStore } from '@ohif/core';
+import { roundNumber } from '@ohif/core/src/utils';
 
 import PROMPT_RESPONSES from '../../default/src/utils/_shared/PROMPT_RESPONSES';
 
@@ -35,6 +36,7 @@ const { downloadDICOMData } = helpers;
 
 const commandsModule = ({
   servicesManager,
+  commandsManager,
   extensionManager,
 }: Types.Extensions.ExtensionParams): Types.Extensions.CommandsModule => {
   const { segmentationService, displaySetService, viewportGridService, toolGroupService } =
@@ -164,7 +166,7 @@ const commandsModule = ({
       const segmentationInOHIF = segmentationService.getSegmentation(segmentationId);
       const representations = segmentationService.getRepresentationsForSegmentation(segmentationId);
 
-      Object.entries(segmentationInOHIF.segments).forEach(([segmentIndex, segment]) => {
+      for (const [segmentIndex, segment] of Object.entries(segmentationInOHIF.segments)) {
         // segmentation service already has a color for each segment
         if (!segment) {
           return;
@@ -221,6 +223,86 @@ const commandsModule = ({
         if (segment.cachedStats.algorithmName !== undefined){
           segmentMetadata.SegmentAlgorithmName = segment.cachedStats.algorithmName;
         }
+        if (segment.cachedStats.namedStats !== undefined){
+          // Check if bidirectional needs to be computed
+          if (segment.cachedStats.namedStats.bidirectional === undefined){
+            // Run the command and wait for it to complete
+            await commandsManager.run('runSegmentBidirectional', {
+              segmentationId,
+              segmentIndex,
+            });
+            // Re-fetch the segmentation to get updated stats
+            const updatedSegmentation = segmentationService.getSegmentation(segmentationId);
+            const updatedSegment = updatedSegmentation?.segments[segmentIndex];
+            if (updatedSegment?.cachedStats?.namedStats?.bidirectional) {
+              segment.cachedStats.namedStats.bidirectional = updatedSegment.cachedStats.namedStats.bidirectional;
+            }
+          }
+
+          // Now check if bidirectional data is available (either was already there or just computed)
+          if (segment.cachedStats.namedStats.bidirectional !== undefined){
+            const bidirectional = segment.cachedStats.namedStats.bidirectional;
+
+            const { value, unit } = bidirectional;
+            const maxMajor = value.maxMajor;
+            const maxMinor = value.maxMinor;
+
+            const max = Math.max(maxMajor, maxMinor);
+            const min = Math.min(maxMajor, maxMinor);
+
+            const bidirectionalText = "L: "+roundNumber(max)+ unit + "; W: "+roundNumber(min)+unit;
+
+            segmentMetadata.SegmentAlgorithmName += "; "+bidirectionalText;
+          }
+        }
+        if (segmentMetadata.SegmentDescription !== undefined){
+          try {
+            // Try to parse SegmentDescription as JSON
+            const promptData = typeof segmentMetadata.SegmentDescription === 'string' 
+              ? JSON.parse(segmentMetadata.SegmentDescription) 
+              : segmentMetadata.SegmentDescription;
+            
+            if (promptData && typeof promptData === 'object') {
+              const promptTypes = [
+                'pos_points',
+                'neg_points',
+                'pos_boxes',
+                'neg_boxes',
+                'pos_scribbles',
+                'neg_scribbles',
+                'pos_lassos',
+                'neg_lassos'
+              ];
+              
+              const promptCounts: { [key: string]: number } = {};
+              let totalPrompts = 0;
+              const availableTypes: string[] = [];
+              
+              // Count prompts for each type
+              promptTypes.forEach(type => {
+                if (promptData[type] && Array.isArray(promptData[type])) {
+                  const count = promptData[type].length;
+                  promptCounts[type] = count;
+                  totalPrompts += count;
+                  if (count > 0) {
+                    availableTypes.push(type);
+                  }
+                }
+              });
+              
+              // Format prompt information
+              if (totalPrompts > 0) {
+                const promptSummary = availableTypes
+                  .map(type => `${type}: ${promptCounts[type]}`)
+                  .join(', ');
+                segmentMetadata.SegmentAlgorithmName += `; Total Prompts: ${totalPrompts} (${promptSummary})`;
+              }
+            }
+          } catch (error) {
+            // If parsing fails, keep the original SegmentDescription
+            console.warn('Failed to parse SegmentDescription as JSON:', error);
+          }
+        }
         if (segment.cachedStats.algorithmType !== undefined){
           segmentMetadata.SegmentAlgorithmType = segment.cachedStats.algorithmType;
         }
@@ -229,7 +311,7 @@ const commandsModule = ({
         }
         
         labelmap3D.metadata[segmentIndex] = segmentMetadata;
-      });
+      }
 
       const generatedSegmentation = generateSegmentation(
         referencedImages,
@@ -309,17 +391,17 @@ const commandsModule = ({
 
           const { dataset: naturalizedReport } = generatedData;
           
-          // Save elapsedTime in ContentDescription tag (0070, 0081) if available
+          // Build ContentDescription with time breakdown using pre-formatted values from cachedStats
           if (segmentation.cachedStats?.elapsedTimeFormatted) {
-            naturalizedReport.ContentDescription = segmentation.cachedStats.elapsedTimeFormatted;
-          } else if (segmentation.cachedStats?.elapsedTime) {
-            // Fallback: format from raw milliseconds if formatted version not available
-            const totalSeconds = Math.floor(segmentation.cachedStats.elapsedTime / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            const milliseconds = Math.floor((segmentation.cachedStats.elapsedTime % 1000) / 100);
-            naturalizedReport.ContentDescription = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds}`;
-          }
+            const totalTimeFormatted = segmentation.cachedStats.elapsedTimeFormatted
+            const inferenceTimeFormatted = segmentation.cachedStats.inferenceTimeFormatted
+            const userTimeFormatted = segmentation.cachedStats.userTimeFormatted
+            const inferencePercentage = segmentation.cachedStats.inferencePercentage
+            const userPercentage = segmentation.cachedStats.userPercentage
+            
+            naturalizedReport.ContentDescription = 
+              `Total Time: ${totalTimeFormatted}, Inference Time: ${inferenceTimeFormatted} (${inferencePercentage.toFixed(2)}%), User Time: ${userTimeFormatted} (${userPercentage.toFixed(2)}%)`;
+          } 
           
           let selectedDataSourceConfig_new = undefined;
           if (selectedDataSourceConfig.store == undefined) {
