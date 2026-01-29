@@ -2095,15 +2095,14 @@ const commandsModule = ({
         ? `?StudyInstanceUIDs=${studyInstanceUIDs.join('&StudyInstanceUIDs=')}`
         : '';
       
-      // Build new URL: insert /viewer-0512 before /viewer
-      // Example: https://nninter.ccibonn.ai/viewer?StudyInstanceUIDs=... 
-      // -> https://nninter.ccibonn.ai/viewer-0512/viewer?StudyInstanceUIDs=...
+      // Build new URL: insert /viewer-0512 and use segmentation route
+      // Example: https://nninter.ccibonn.ai/viewer?StudyInstanceUIDs=...
+      // -> https://nninter.ccibonn.ai/viewer-0512/segmentation?StudyInstanceUIDs=...
       let newPath = pathname;
       if (pathname.includes('/viewer')) {
-        newPath = pathname.replace('/viewer', '/viewer-0512/viewer');
+        newPath = pathname.replace('/viewer', '/viewer-0512/segmentation');
       } else {
-        // If no /viewer in path, add it
-        newPath = `${pathname}/viewer-0512/viewer`;
+        newPath = `${pathname.replace(/\/$/, '')}/viewer-0512/segmentation`;
       }
       const newUrl = `${url.origin}${newPath}${queryString}`;
       
