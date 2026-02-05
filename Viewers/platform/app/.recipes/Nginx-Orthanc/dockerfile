@@ -86,7 +86,7 @@ COPY ./backup/vtkjs/ImageMarchingSquares.js /usr/src/app/node_modules/@kitware/v
 ENV APP_CONFIG=config/docker-nginx-orthanc.js
 
 # Build the application
-RUN yarn run build:dev
+RUN yarn run build
 
 # # Stage 2: Bundle the built application into a Docker container which runs NGINX using Alpine Linux
 FROM nginx:alpine

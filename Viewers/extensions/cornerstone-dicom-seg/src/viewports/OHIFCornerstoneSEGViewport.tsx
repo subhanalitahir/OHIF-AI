@@ -373,19 +373,6 @@ function OHIFCornerstoneSEGViewport(props: withAppTypes) {
 }
 
 function _getReferencedDisplaySetMetadata(referencedDisplaySet, segDisplaySet) {
-  const { SharedFunctionalGroupsSequence } = segDisplaySet.instance;
-
-  const SharedFunctionalGroup = Array.isArray(SharedFunctionalGroupsSequence)
-    ? SharedFunctionalGroupsSequence[0]
-    : SharedFunctionalGroupsSequence;
-
-  const { PixelMeasuresSequence } = SharedFunctionalGroup;
-
-  const PixelMeasures = Array.isArray(PixelMeasuresSequence)
-    ? PixelMeasuresSequence[0]
-    : PixelMeasuresSequence;
-
-  const { SpacingBetweenSlices, SliceThickness } = PixelMeasures;
 
   const image0 = referencedDisplaySet.images[0];
   const referencedDisplaySetMetadata = {
@@ -393,13 +380,13 @@ function _getReferencedDisplaySetMetadata(referencedDisplaySet, segDisplaySet) {
     PatientName: image0.PatientName,
     PatientSex: image0.PatientSex,
     PatientAge: image0.PatientAge,
-    SliceThickness: image0.SliceThickness || SliceThickness,
+    SliceThickness: image0.SliceThickness,
     StudyDate: image0.StudyDate,
     SeriesDescription: image0.SeriesDescription,
     SeriesInstanceUID: image0.SeriesInstanceUID,
     SeriesNumber: image0.SeriesNumber,
     ManufacturerModelName: image0.ManufacturerModelName,
-    SpacingBetweenSlices: image0.SpacingBetweenSlices || SpacingBetweenSlices,
+    SpacingBetweenSlices: image0.SpacingBetweenSlices,
   };
 
   return referencedDisplaySetMetadata;
