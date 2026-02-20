@@ -24,7 +24,7 @@ By combining these foundation models with the familiar OHIF interface, researche
   - [Segmentation](#segmentation)
     - [Visual prompts](#visual-prompts)
     - [Model selection & inference](#model-selection)
-    - [Text-prompt segmentation](#text-prompt-segmentation-voxtell)
+    - [Text-prompt segmentation](#text-prompt-segmentation)
   - [Report generation](#report-generation-medgemma-15-4b)
 - [Keyboard Shortcuts](#-keyboard-shortcuts)
 - [FAQ](#-faq)
@@ -38,7 +38,7 @@ By combining these foundation models with the familiar OHIF interface, researche
 
 **Segmentation (medical imaging)**  
 - 🖱️ **Visual prompts** — Real-time segmentation with points, scribbles, lassos, and bounding boxes  
-- 📝 **Text prompts** — Free-form text to obtain segmentation (see [Text-prompt segmentation](#text-prompt-segmentation-voxtell) for usage and important notices)  
+- 📝 **Text prompts** — Free-form text to obtain segmentation (see [Text-prompt segmentation](#text-prompt-segmentation) for usage and important notices)  
 - 🚀 **Live mode** — Automatic inference on every prompt  
 - 📦 **3D propagation** — Single prompt segments the entire volume  
 - 🤖 **Multiple models** — nnInteractive, SAM2, MedSAM2, SAM3, and VoxTell  
