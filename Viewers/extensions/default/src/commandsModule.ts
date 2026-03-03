@@ -287,11 +287,20 @@ const commandsModule = ({
         return commandsManager.run('setToolActive', { toolName: 'Pan' });
       }
 
+      // Disable AI tool shortcuts when timer is not running (same as disabled buttons)
+      if (!toolboxState.getTimerRunning() && toolName !== 'Pan') {
+        return commandsManager.run('setToolActive', { toolName: 'Pan' });
+      }
+
       return commandsManager.run('setToolActive', { toolName });
     },
 
     runAiSegmentation: () => {
       if (toolboxState.getLocked()) {
+        return;
+      }
+
+      if (!toolboxState.getTimerRunning()) {
         return;
       }
 
@@ -922,12 +931,20 @@ const commandsModule = ({
         toolboxState.endInferenceTracking();
         uiNotificationService.show({
           title: 'Prompt warning',
-          message: 'Only pos/neg points and bbox are available for SAM2',
+          message: 'Only pos/neg points and bbox are available for SAM2-based models',
           type: 'warning',
           duration: 4000,
         });
         return;
       }
+
+      uiNotificationService.show({
+        title: 'Prompt info',
+        message: 'Only pos/neg points and bbox are accepted for SAM2-based models, other prompt types are ignored',
+        type: 'info',
+        duration: 4000,
+      });
+
       let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
       let params = {
         largest_cc: false,
@@ -954,18 +971,21 @@ const commandsModule = ({
         },
       });
 
-      // Show notification with promise support
-      uiNotificationService.show({
-        title: 'MONAI Label',
-        message: 'Processing segmentation...',
-        type: 'info',
-        promise: segmentationPromise,
-        promiseMessages: {
-          loading: 'Processing segmentation...',
-          success: () => 'Run Segmentation - Successful',
-          error: (error) => `Run Segmentation - Failed: ${error.message || 'Unknown error'}`,
-        },
-      });
+      // Delay "Processing segmentation..." so the prompt info is visible for a few seconds first
+      const processingNotificationDelayMs = 4000;
+      setTimeout(() => {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Processing segmentation...',
+          type: 'info',
+          promise: segmentationPromise,
+          promiseMessages: {
+            loading: 'Processing segmentation...',
+            success: () => 'Run Segmentation - Successful',
+            error: (error) => `Run Segmentation - Failed: ${error.message || 'Unknown error'}`,
+          },
+        });
+      }, processingNotificationDelayMs);
 
             try {
         // Process the response
@@ -1263,6 +1283,10 @@ const commandsModule = ({
     },
     async resetNninter(options: {clearMeasurements: boolean} = {clearMeasurements: false}){
       if (toolboxState.getLocked()) {
+        return;
+      }
+
+      if (!toolboxState.getTimerRunning()) {
         return;
       }
 
