@@ -1,0 +1,13 @@
+image: gitpod/workspace-full
+tasks:
+  - name: Install Dependencies
+    init: |
+      yarn install
+    command: |
+      yarn run dev
+ports:
+  - port: 3000
+    onOpen: notify
+vscode:
+  extensions:
+    - dbaeumer.vscode-eslint
